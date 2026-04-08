@@ -1,0 +1,80 @@
+# Reference: currently deployed upstream prod docker compose config
+# Use this to inform updates to compose.prod.yaml
+
+networks:
+  prod-fragforce-org: {}
+  swag_bridge: {}
+services:
+  web:
+    image: ghcr.io/fragforce/fragforce-prod-web:master
+    container_name: prod-web
+    ports:
+      - "10.22.195.4:8000:8000"
+    environment:
+      TZ: "Etc/UTC"
+      DJANGO_LOG_LEVEL: "DEBUG"
+    env_file: ./.env
+    command: [ "gunicorn", "--log-level", "debug", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
+      #volumes:
+      #- ./settings.py:/home/appuser/fforg/settings.py
+    depends_on:
+      - redis
+      - db
+    networks:
+      - prod-fragforce-org
+      - swag_bridge
+  beat:
+    image: ghcr.io/fragforce/fragforce-prod-beat:master
+    container_name: prod-beat
+    env_file: ./.env
+    #    volumes:
+    #  - ./settings.py:/home/appuser/fforg/settings.py
+    depends_on:
+      - redis
+      - db
+    networks:
+      - prod-fragforce-org
+    command: [ "celery", "-A", "fforg", "worker", "--autoscale=1,1", "--beat", "-E" ]
+  worker:
+    image: ghcr.io/fragforce/fragforce-prod-worker:master
+    container_name: prod-worker
+    env_file: ./.env
+    #volumes:
+    #  - ./settings.py:/home/appuser/fforg/settings.py
+    depends_on:
+      - redis
+      - db
+    networks:
+      - prod-fragforce-org
+    command: [ "celery", "-A", "fforg", "worker", "--autoscale=6,2", "-E" ]
+  redis:
+    container_name: prod-redis
+    image: redis
+    environment:
+      TZ: "Etc/UTC"
+    networks:
+      - prod-fragforce-org
+    volumes:
+      - ./redis/data:/data
+  redis-wat:
+    container_name: prod-redis-wat
+    image: redis
+    environment:
+      TZ: "Etc/UTC"
+    networks:
+      - prod-fragforce-org
+    volumes:
+      - ./redis/data-wat:/data
+  db:
+    container_name: prod-db
+    image: postgres:14.8
+    env_file: .env.postgres
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+      - .:/dump
+    expose:
+      - 5432
+    ports:
+      - "127.0.0.1:15432:5432"
+    networks:
+      - prod-fragforce-org

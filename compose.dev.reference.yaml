@@ -1,0 +1,71 @@
+# Reference: currently deployed upstream dev docker compose config
+# Use this to inform updates to compose.dev.yaml
+
+networks:
+  dev-fragforce-org: {}
+  swag_bridge: {}
+services:
+  web:
+    image: ghcr.io/fragforce/fragforce-dev-web:dev
+    container_name: dev-web
+    ports:
+      - "10.22.195.4:8001:8000"
+    environment:
+      TZ: "Etc/UTC"
+      DJANGO_LOG_LEVEL: "DEBUG"
+    command: [ "gunicorn", "--log-level", "debug", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
+    env_file: ./.env
+    depends_on:
+      - redis
+      - db
+    networks:
+      - dev-fragforce-org
+      - swag_bridge
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+  beat:
+    image: ghcr.io/fragforce/fragforce-dev-beat:dev
+    container_name: dev-beat
+    env_file: ./.env
+    networks:
+      - dev-fragforce-org
+    depends_on:
+      - redis
+      - db
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+  worker:
+    image: ghcr.io/fragforce/fragforce-dev-worker:dev
+    container_name: dev-worker
+    env_file: ./.env
+    networks:
+      - dev-fragforce-org
+    depends_on:
+      - redis
+      - db
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+  redis:
+    container_name: dev-redis
+    image: redis
+    environment:
+      TZ: "Etc/UTC"
+    networks:
+      - dev-fragforce-org
+    volumes:
+      - ./redis/data:/data
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+  db:
+    container_name: dev-db
+    image: postgres:14.8
+    env_file: .env.postgres
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+      - .:/dump
+    expose:
+      - 5432
+    networks:
+      - dev-fragforce-org
+    labels:
+      com.centurylinklabs.watchtower.enable: true

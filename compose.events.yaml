@@ -1,0 +1,104 @@
+networks:
+  fragforce-dev:
+    external: true
+
+services:
+  db-fragdev:
+    image: postgres
+    container_name: db
+    restart: unless-stopped
+    networks: [fragforce-dev]
+    env_file: /var/opt/docker/stacks/fragforce-dev/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - /var/opt/docker/stacks/fragforce-dev/initdb:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis-fragdev:
+    image: redis
+    container_name: redis
+    restart: unless-stopped
+    networks: [fragforce-dev]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate-fragdev:
+    image: ghcr.io/aevumdecessus/fragforce-events-web:events
+    container_name: migrate
+    command: python manage.py migrate
+    networks: [fragforce-dev]
+    env_file: /var/opt/docker/stacks/fragforce-dev/.env
+    depends_on:
+      db-fragdev:
+        condition: service_healthy
+    restart: "no"
+
+  web-fragdev:
+    image: ghcr.io/aevumdecessus/fragforce-events-web:events
+    container_name: web
+    restart: unless-stopped
+    networks: [fragforce-dev]
+    env_file: /var/opt/docker/stacks/fragforce-dev/.env
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_LOG_LEVEL: "DEBUG"
+    command: [ "gunicorn", "--log-level", "debug", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
+    depends_on:
+      migrate-fragdev:
+        condition: service_completed_successfully
+      redis-fragdev:
+        condition: service_healthy
+      db-fragdev:
+        condition: service_healthy
+
+  worker-fragdev:
+    image: ghcr.io/aevumdecessus/fragforce-events-worker:events
+    container_name: worker
+    restart: unless-stopped
+    networks: [fragforce-dev]
+    env_file: /var/opt/docker/stacks/fragforce-dev/.env
+    environment:
+      DJANGO_LOG_LEVEL: "DEBUG"
+    command: [ "celery", "-A", "fforg", "worker", "--autoscale=6,2", "-E" ]
+    depends_on:
+      migrate-fragdev:
+        condition: service_completed_successfully
+      redis-fragdev:
+        condition: service_healthy
+      db-fragdev:
+        condition: service_healthy
+
+  beat-fragdev:
+    image: ghcr.io/aevumdecessus/fragforce-events-beat:events
+    container_name: beat
+    restart: unless-stopped
+    networks: [fragforce-dev]
+    env_file: /var/opt/docker/stacks/fragforce-dev/.env
+    environment:
+      DJANGO_LOG_LEVEL: "DEBUG"
+    command: [ "celery", "-A", "fforg", "worker", "--autoscale=1,1", "--beat", "-E" ]
+    depends_on:
+      migrate-fragdev:
+        condition: service_completed_successfully
+      redis-fragdev:
+        condition: service_healthy
+      db-fragdev:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

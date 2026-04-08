@@ -1,0 +1,98 @@
+networks:
+  prod-fragforce-org: {}
+  swag_bridge: {}
+
+services:
+  db:
+    image: postgres:14.8
+    container_name: prod-db
+    restart: unless-stopped
+    networks: [prod-fragforce-org]
+    env_file: .env.postgres
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+      - .:/dump
+    expose:
+      - 5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis
+    container_name: prod-redis
+    restart: unless-stopped
+    environment:
+      TZ: "Etc/UTC"
+    networks: [prod-fragforce-org]
+    volumes:
+      - ./redis/data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: ghcr.io/fragforce/fragforce-prod-web:master
+    container_name: prod-migrate
+    command: python manage.py migrate
+    networks: [prod-fragforce-org]
+    env_file: ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    image: ghcr.io/fragforce/fragforce-prod-web:master
+    container_name: prod-web
+    restart: unless-stopped
+    env_file: ./.env
+    ports:
+      - "10.22.195.4:8000:8000"
+    environment:
+      TZ: "Etc/UTC"
+    command: [ "gunicorn", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - prod-fragforce-org
+      - swag_bridge
+
+  worker:
+    image: ghcr.io/fragforce/fragforce-prod-worker:master
+    container_name: prod-worker
+    restart: unless-stopped
+    env_file: ./.env
+    command: [ "celery", "-A", "fforg", "worker", "--autoscale=6,2", "-E" ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks: [prod-fragforce-org]
+
+  beat:
+    image: ghcr.io/fragforce/fragforce-prod-beat:master
+    container_name: prod-beat
+    restart: unless-stopped
+    env_file: ./.env
+    command: [ "celery", "-A", "fforg", "worker", "--autoscale=1,1", "--beat", "-E" ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks: [prod-fragforce-org]

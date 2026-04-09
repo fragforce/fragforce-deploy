@@ -4,13 +4,13 @@ networks:
 
 services:
   db:
-    image: postgres:14.8
+    image: postgres:18.3
     container_name: prod-db
     restart: unless-stopped
     networks: [prod-fragforce-org]
     env_file: ./.env
     volumes:
-      - ./postgres/data:/var/lib/postgresql/data
+      - ./postgres:/var/lib/postgresql
       - .:/dump
     expose:
       - 5432

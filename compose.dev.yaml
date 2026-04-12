@@ -101,3 +101,18 @@ services:
       db:
         condition: service_healthy
     networks: [dev-fragforce-org]
+
+  bot:
+    image: ghcr.io/fragforce/fragforce-dev-web:dev
+    container_name: dev-bot
+    restart: unless-stopped
+    env_file: ./.env
+    command: [ "python", "manage.py", "run_discord_bot" ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks: [dev-fragforce-org]

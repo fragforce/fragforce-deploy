@@ -99,6 +99,21 @@ services:
       db-fragdev:
         condition: service_healthy
 
+  bot-fragdev:
+    image: ghcr.io/aevumdecessus/fragforce-events-web:events
+    container_name: bot
+    restart: unless-stopped
+    networks: [fragforce-dev]
+    env_file: /var/opt/docker/stacks/fragforce-dev/.env
+    command: [ "python", "manage.py", "run_discord_bot" ]
+    depends_on:
+      migrate-fragdev:
+        condition: service_completed_successfully
+      redis-fragdev:
+        condition: service_healthy
+      db-fragdev:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:

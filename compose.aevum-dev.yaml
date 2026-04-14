@@ -36,7 +36,7 @@ services:
       retries: 10
 
   migrate-fragdev:
-    image: ghcr.io/aevumdecessus/fragforce-events-web:latest
+    image: ghcr.io/aevumdecessus/fragforce-events-web:${BRANCH_TAG:-latest}
     container_name: migrate
     command: python manage.py migrate
     networks: [fragforce-dev]
@@ -47,7 +47,7 @@ services:
     restart: "no"
 
   web-fragdev:
-    image: ghcr.io/aevumdecessus/fragforce-events-web:latest
+    image: ghcr.io/aevumdecessus/fragforce-events-web:${BRANCH_TAG:-latest}
     container_name: web
     restart: unless-stopped
     networks: [fragforce-dev]
@@ -66,7 +66,7 @@ services:
         condition: service_healthy
 
   worker-fragdev:
-    image: ghcr.io/aevumdecessus/fragforce-events-worker:latest
+    image: ghcr.io/aevumdecessus/fragforce-events-worker:${BRANCH_TAG:-latest}
     container_name: worker
     restart: unless-stopped
     networks: [fragforce-dev]
@@ -83,7 +83,7 @@ services:
         condition: service_healthy
 
   beat-fragdev:
-    image: ghcr.io/aevumdecessus/fragforce-events-beat:latest
+    image: ghcr.io/aevumdecessus/fragforce-events-beat:${BRANCH_TAG:-latest}
     container_name: beat
     restart: unless-stopped
     networks: [fragforce-dev]
@@ -100,7 +100,7 @@ services:
         condition: service_healthy
 
   bot-fragdev:
-    image: ghcr.io/aevumdecessus/fragforce-events-web:latest
+    image: ghcr.io/aevumdecessus/fragforce-events-web:${BRANCH_TAG:-latest}
     container_name: bot
     restart: unless-stopped
     networks: [fragforce-dev]

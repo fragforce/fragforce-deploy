@@ -13,7 +13,7 @@ services:
     environment:
       TZ: "Etc/UTC"
       DJANGO_LOG_LEVEL: "DEBUG"
-    command: [ "gunicorn", "--log-level", "debug", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "gunicorn", "--log-level", "debug", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
     env_file: ./.env
     depends_on:
       - redis

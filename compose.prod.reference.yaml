@@ -15,8 +15,6 @@ services:
       DJANGO_LOG_LEVEL: "DEBUG"
     env_file: ./.env
     command: [ "gunicorn", "--log-level", "debug", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
-      #volumes:
-      #- ./settings.py:/home/appuser/fforg/settings.py
     depends_on:
       - redis
       - db
@@ -27,26 +25,22 @@ services:
     image: ghcr.io/fragforce/fragforce-prod-beat:master
     container_name: prod-beat
     env_file: ./.env
-    #    volumes:
-    #  - ./settings.py:/home/appuser/fforg/settings.py
     depends_on:
       - redis
       - db
     networks:
       - prod-fragforce-org
-    command: [ "celery", "-A", "fforg", "worker", "--autoscale=1,1", "--beat", "-E" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "celery", "-A", "fforg", "worker", "--autoscale=1,1", "--beat", "-E", "-Q", "alerts,celery" ]
   worker:
     image: ghcr.io/fragforce/fragforce-prod-worker:master
     container_name: prod-worker
     env_file: ./.env
-    #volumes:
-    #  - ./settings.py:/home/appuser/fforg/settings.py
     depends_on:
       - redis
       - db
     networks:
       - prod-fragforce-org
-    command: [ "celery", "-A", "fforg", "worker", "--autoscale=6,2", "-E" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "celery", "-A", "fforg", "worker", "--autoscale=6,2", "-E", "-Q", "alerts,celery" ]
   redis:
     container_name: prod-redis
     image: redis

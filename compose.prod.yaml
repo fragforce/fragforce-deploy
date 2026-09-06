@@ -38,7 +38,7 @@ services:
   migrate:
     image: ghcr.io/fragforce/fragforce-prod-web:master
     container_name: prod-migrate
-    command: python manage.py migrate
+    command: [ "uv", "run", "--no-sync", "--no-build", "python", "manage.py", "migrate" ]
     networks: [prod-fragforce-org]
     env_file: ./.env
     depends_on:
@@ -55,7 +55,7 @@ services:
       - "10.22.195.4:8000:8000"
     environment:
       TZ: "Etc/UTC"
-    command: [ "gunicorn", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "gunicorn", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -72,7 +72,7 @@ services:
     container_name: prod-worker
     restart: unless-stopped
     env_file: ./.env
-    command: [ "celery", "-A", "fforg", "worker", "--autoscale=6,2", "-E" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "celery", "-A", "fforg", "worker", "--autoscale=6,2", "-E", "-Q", "alerts,celery" ]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -87,7 +87,7 @@ services:
     container_name: prod-beat
     restart: unless-stopped
     env_file: ./.env
-    command: [ "celery", "-A", "fforg", "worker", "--autoscale=1,1", "--beat", "-E" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "celery", "-A", "fforg", "worker", "--autoscale=1,1", "--beat", "-E", "-Q", "alerts,celery" ]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -102,7 +102,7 @@ services:
     container_name: prod-bot
     restart: unless-stopped
     env_file: ./.env
-    command: [ "python", "manage.py", "run_discord_bot" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "python", "manage.py", "run_discord_bot" ]
     depends_on:
       migrate:
         condition: service_completed_successfully

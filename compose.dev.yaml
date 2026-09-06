@@ -38,7 +38,7 @@ services:
   migrate:
     image: ghcr.io/fragforce/fragforce-dev-web:dev
     container_name: dev-migrate
-    command: python manage.py migrate
+    command: [ "uv", "run", "--no-sync", "--no-build", "python", "manage.py", "migrate" ]
     networks: [dev-fragforce-org]
     env_file: ./.env
     depends_on:
@@ -56,7 +56,7 @@ services:
     environment:
       TZ: "Etc/UTC"
       DJANGO_LOG_LEVEL: "DEBUG"
-    command: [ "gunicorn", "--log-level", "debug", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "gunicorn", "--log-level", "debug", "--bind=0.0.0.0:8000", "--forwarded-allow-ips", "*", "--proxy-allow-from", "*", "fforg.wsgi" ]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -75,7 +75,7 @@ services:
     env_file: ./.env
     environment:
       DJANGO_LOG_LEVEL: "DEBUG"
-    command: [ "celery", "-A", "fforg", "worker", "--autoscale=6,2", "-E" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "celery", "-A", "fforg", "worker", "--autoscale=6,2", "-E", "-Q", "alerts,celery" ]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -92,7 +92,7 @@ services:
     env_file: ./.env
     environment:
       DJANGO_LOG_LEVEL: "DEBUG"
-    command: [ "celery", "-A", "fforg", "worker", "--autoscale=1,1", "--beat", "-E" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "celery", "-A", "fforg", "worker", "--autoscale=1,1", "--beat", "-E", "-Q", "alerts,celery" ]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -107,7 +107,7 @@ services:
     container_name: dev-bot
     restart: unless-stopped
     env_file: ./.env
-    command: [ "python", "manage.py", "run_discord_bot" ]
+    command: [ "uv", "run", "--no-sync", "--no-build", "python", "manage.py", "run_discord_bot" ]
     depends_on:
       migrate:
         condition: service_completed_successfully

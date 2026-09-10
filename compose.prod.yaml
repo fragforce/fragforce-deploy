@@ -24,6 +24,7 @@ services:
     image: redis
     container_name: prod-redis
     restart: unless-stopped
+    command: redis-server --maxmemory 1024mb --maxmemory-policy volatile-lru
     environment:
       TZ: "Etc/UTC"
     networks: [prod-fragforce-org]
